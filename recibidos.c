@@ -15,48 +15,65 @@ typedef struct msgbuf
 
 int main()
 {
-	int msqid, msqid102, msqid201;
+	int msqid, msqid1, msqid2, msqid3;
 	//int msgflg = IPC_CREAT | 0666;
-	key_t key, key102, key201;
-	message_buf sbuf, rbuf102, sbuf201;
+	key_t key, key1, key2, key3;
+	message_buf sbuf, rbuf1, sbuf2, rbuf3;
 	size_t buf_length;
 	
 	int pid_pedidos, pid_recibidos1;
 	
-	key201 = 2001;
-	if ((msqid201 = msgget(key201, 0666)) < 0)
+	/**------------------------------------------------------------------------
+	 * Configuración de la conexión con los otros procesos
+	 * ------------------------------------------------------------------------
+	 */
+	
+	key1 = 1000;
+	if ((msqid1 = msgget(key1, 0666)) < 0)
 	{
 		perror("msgget");
 		exit(1);
 	}
 	
-	key102 = 1002;
-	if ((msqid102 = msgget(key102, 0666)) < 0)
+	key2 = 2000;
+	if ((msqid2 = msgget(key2, 0666)) < 0)
 	{
 		perror("msgget");
 		exit(1);
 	}
 	
-	sbuf201.mtype = 201;
-	sprintf(sbuf201.mtext, "%d", getpid());
-	buf_length = strlen(sbuf201.mtext) + 1 ;
-	
-	int mensaje_recibido;
-	
-	do
+	key3 = 3000;
+	if ((msqid3 = msgget(key3, 0666)) < 0)
 	{
-		if (msgsnd(msqid201, &sbuf201, buf_length, IPC_NOWAIT) < 0)
-		{
-			perror("msgsnd");
-			exit(1);
-		}
+		perror("msgget");
+		exit(1);
 	}
-	while ((mensaje_recibido = msgrcv(msqid102, &rbuf102, MSG_SIZE, 102, 0)) < 1);
 	
-	pid_pedidos = atoi(rbuf102.mtext);
+	sbuf2.mtype = 200;
+	sprintf(sbuf2.mtext, "%d", getpid());
+	buf_length = strlen(sbuf2.mtext) + 1;
 	
-	printf("Mi PID = %d\nPID pedidos.c = %d\n", getpid(), pid_pedidos);
+	if (msgsnd(msqid2, &sbuf2, buf_length, IPC_NOWAIT) < 0)
+	{
+		perror("msgsnd");
+		exit(1);
+	}
+	
+	if (msgsnd(msqid2, &sbuf2, buf_length, IPC_NOWAIT) < 0)
+	{
+		perror("msgsnd");
+		exit(1);
+	}
+	
+	while (msgrcv(msqid1, &rbuf1, MSG_SIZE, 100, 0) < 1);
+	
+	pid_pedidos = atoi(rbuf1.mtext);
+	
+	while (msgrcv(msqid3, &rbuf3, MSG_SIZE, 300, 0) < 1);
+	
+	pid_recibidos1 = atoi(rbuf3.mtext);
+	
+	printf("Mi PID = %d\nPID pedidos.c = %d\nPID recibidos1.c = %d\n", getpid(), pid_pedidos, pid_recibidos1);
 	
 	return 0;
 }
-
