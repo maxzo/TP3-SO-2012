@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
@@ -13,12 +14,16 @@ typedef struct msgbuf
        char    mtext[MSG_SIZE];
 } message_buf;
 
+void despertar(int sig) { }
+
 int main()
 {
-	int msqid, msqid1, msqid2, msqid3;
+	signal(SIGUSR1, &despertar);
+	
+	int msqid_ordinaria, msqid1, msqid2, msqid3;
 	//int msgflg = IPC_CREAT | 0666;
-	key_t key, key1, key2, key3;
-	message_buf sbuf, rbuf1, rbuf2, sbuf3;
+	key_t key_ordinaria, key1, key2, key3;
+	message_buf rbuf_ordinaria, rbuf1, rbuf2, sbuf3;
 	size_t buf_length;
 	
 	int pid_pedidos, pid_recibidos;
@@ -73,7 +78,38 @@ int main()
 	
 	pid_recibidos = atoi(rbuf2.mtext);
 	
-	printf("Mi PID = %d\nPID pedidos.c = %d\nPID recibidos.c = %d\n", getpid(), pid_pedidos, pid_recibidos);
+	printf("Mi PID = %d\nPID pedidos.c = %d\nPID recibidos.c = %d\n\n", getpid(), pid_pedidos, pid_recibidos);
+	
+	/**------------------------------------------------------------------------
+	 * Recepción de mensajes
+	 * ------------------------------------------------------------------------
+	 */
+	
+	//signal(SIGUSR1, &despertar);
+	
+	key_ordinaria = 1010;
+	if ((msqid_ordinaria = msgget(key_ordinaria, 0666)) < 0)
+	{
+		perror("msgget");
+		exit(1);
+	}
+	
+	printf("Agenda ordinaria:\n");
+	
+	while (1)
+	{
+		pause();
+		
+		if (msgrcv(msqid_ordinaria, &rbuf_ordinaria, MSG_SIZE, 0, 0) > 0)
+		{
+			if (rbuf_ordinaria.mtype == 1 || rbuf_ordinaria.mtype == 2)
+			{
+				printf("%s\n", rbuf_ordinaria.mtext);
+			}
+		}
+		
+		kill(pid_pedidos, SIGUSR1);
+	}
 	
 	return 0;
 }
