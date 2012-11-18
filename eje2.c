@@ -2,14 +2,20 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/sem.h>
+#include <linux/ipc.h>
+#include <linux/sem.h>
+#include "semaforo.c"
 
-void main(int argc, char* argv[], char* envp[])
+#define MUTEX 0
+#define VACIAS 1
+#define LLENAS 2
+
+#define N 3
+
+int main(int argc, char* argv[], char* envp[])
 {
 	key_t key;
 	int semid;
-	union semun arg;
 	
 	if ((key = ftok(".", 'a')) == -1)
 	{
@@ -23,42 +29,30 @@ void main(int argc, char* argv[], char* envp[])
 	  exit(1);
 	}
 	
-	// Semaforo 0: mutex
-	arg.val = 1;
-	if (semctl(semid, 0, SETVAL, arg) == -1)
-	{
-	  perror("semctl");
-	  exit(1);
-	}
+	inicializar_sem(semid, MUTEX, 1);
+	inicializar_sem(semid, VACIAS, N);
+	inicializar_sem(semid, LLENAS, 0);
 	
-	// Semaforo 1: vacias
-	arg.val = 3;
-	if (semctl(semid, 1, SETVAL, arg) == -1)
-	{
-	  perror("semctl");
-	  exit(1);
-	}
-	
-	// Semaforo 2: llenas
-	arg.val = 0;
-	if (semctl(semid, 2, SETVAL, arg) == -1)
-	{
-	  perror("semctl");
-	  exit(1);
-	}
-
 	char* comando;
-	
+		
 	if (fork() == 0)
 	{
 		comando = "./locutor";
 		execve(comando, argv, envp);
+		printf("Falla locutor\n");
 	}
-	else
+	else if (fork() == 0)
 	{
 		comando = "./productor";
 		execve(comando, argv, envp);
+		printf("Falla productor\n");
+	}
+	else
+	{
+		wait();
+		
+		// TODO: remover semáforos
 	}
 	
-	wait();
+	return 0;
 }
