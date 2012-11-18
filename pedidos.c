@@ -1,4 +1,3 @@
-#include <signal.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
@@ -14,30 +13,28 @@ typedef struct msgbuf
        char    mtext[MSG_SIZE];
 } message_buf;
 
-void despertar(int sig) { }
-
 int main()
 {
-	signal(SIGUSR1, &despertar);
-	
-	int msqid_prioritaria, msqid_ordinaria, msqid1, msqid2, msqid3;
+	int msqid_prioritaria, msqid_ordinaria, msqid_recibidos, msqid_recibidos1;
 	int msgflg = IPC_CREAT | 0666;
-	key_t key_prioritaria, key_ordinaria, key1, key2, key3;
-	message_buf sbuf_prioritaria, sbuf_ordinaria, sbuf1, rbuf2, rbuf3;
+	key_t key_prioritaria, key_ordinaria, key_recibidos, key_recibidos1;
+	message_buf sbuf_prioritaria, sbuf_ordinaria, rbuf_recibidos, rbuf_recibidos1;
 	size_t buf_length;
-	
-	int pid_recibidos, pid_recibidos1;
+	int i;
 	
 	/**
 	 * Limpieza de colas de mensajes que pudieron quedar
 	 * en memoria de ejecuciones anteriores interrumpidas
 	 */
-	msgctl(msgget(1000, msgflg), IPC_RMID, NULL);
-	msgctl(msgget(2000, msgflg), IPC_RMID, NULL);
-	msgctl(msgget(3000, msgflg), IPC_RMID, NULL);
-	msgctl(1010, IPC_RMID, NULL);
-	msgctl(2020, IPC_RMID, NULL);
+	msgctl(msgget(1010, msgflg), IPC_RMID, NULL);
+	msgctl(msgget(2020, msgflg), IPC_RMID, NULL);
+	msgctl(msgget(1011, msgflg), IPC_RMID, NULL);
+	msgctl(msgget(2022, msgflg), IPC_RMID, NULL);
 	
+	
+	/**
+	 * Creación de las colas de mensajes
+	 */
 	key_prioritaria = 2020;
 	if ((msqid_prioritaria = msgget(key_prioritaria, msgflg)) < 0)
 	{
@@ -52,66 +49,137 @@ int main()
 		exit(1);
 	}
 	
-	/**------------------------------------------------------------------------
-	 * Configuración de la conexión con los otros procesos
-	 * ------------------------------------------------------------------------
+	key_recibidos = 2022;
+	if ((msqid_recibidos = msgget(key_recibidos, msgflg)) < 0)
+	{
+		perror("msgget");
+		exit(1);
+	}
+	
+	key_recibidos1 = 1011;
+	if ((msqid_recibidos1 = msgget(key_recibidos1, msgflg)) < 0)
+	{
+		perror("msgget");
+		exit(1);
+	}
+	
+	/**
+	 * 2 mensajes de mantenimiento
 	 */
-	
-	key1 = 1000;
-	if ((msqid1 = msgget(key1, msgflg)) < 0)
+	for (i = 0; i < 2; i++)
 	{
-		perror("msgget");
-		exit(1);
+		sbuf_ordinaria.mtype = 2;
+		sprintf(sbuf_ordinaria.mtext, "Requerimiento de mantenimiento de sala");
+		buf_length = strlen(sbuf_ordinaria.mtext) + 1;
+		
+		while (msgrcv(msqid_recibidos1, &rbuf_recibidos1, MSG_SIZE, 11, 0) < 0);
+		
+		if (msgsnd(msqid_ordinaria, &sbuf_ordinaria, buf_length, IPC_NOWAIT) < 0)
+		{
+			perror("msgsnd");
+			exit(1);
+		}
+		else
+		{
+			printf("Mensaje: \"%s\" enviado!\n", sbuf_ordinaria.mtext);
+		}
 	}
 	
-	key2 = 2000;
-	if ((msqid2 = msgget(key2, msgflg)) < 0)
+	/**
+	 * 4 mensajes de conferencias
+	 */
+	for (i = 0; i < 4; i++)
 	{
-		perror("msgget");
-		exit(1);
+		sbuf_ordinaria.mtype = 1;
+		sprintf(sbuf_ordinaria.mtext, "Solicitud de sala para videoconferencia (Conf. operativa)");
+		buf_length = strlen(sbuf_ordinaria.mtext) + 1;
+		
+		while (msgrcv(msqid_recibidos1, &rbuf_recibidos1, MSG_SIZE, 11, 0) < 0);
+		
+		if (msgsnd(msqid_ordinaria, &sbuf_ordinaria, buf_length, IPC_NOWAIT) < 0)
+		{
+			perror("msgsnd");
+			exit(1);
+		}
+		else
+		{
+			printf("Mensaje: \"%s\" enviado!\n", sbuf_ordinaria.mtext);
+		}
 	}
 	
-	key3 = 3000;
-	if ((msqid3 = msgget(key3, msgflg)) < 0)
+	/**
+	 * 2 mensajes de mantenimiento
+	 */
+	for (i = 0; i < 2; i++)
 	{
-		perror("msgget");
-		exit(1);
+		sbuf_ordinaria.mtype = 2;
+		sprintf(sbuf_ordinaria.mtext, "Requerimiento de mantenimiento de sala");
+		buf_length = strlen(sbuf_ordinaria.mtext) + 1;
+		
+		while (msgrcv(msqid_recibidos1, &rbuf_recibidos1, MSG_SIZE, 11, 0) < 0);
+		
+		if (msgsnd(msqid_ordinaria, &sbuf_ordinaria, buf_length, IPC_NOWAIT) < 0)
+		{
+			perror("msgsnd");
+			exit(1);
+		}
+		else
+		{
+			printf("Mensaje: \"%s\" enviado!\n", sbuf_ordinaria.mtext);
+		}
 	}
 	
-	sbuf1.mtype = 100;
-	sprintf(sbuf1.mtext, "%d", getpid());
-	buf_length = strlen(sbuf1.mtext) + 1;
+	/**
+	 * 2 mensajes de conferencias gerenciales
+	 */
+	for (i = 0; i < 2; i++)
+	{
+		sbuf_prioritaria.mtype = 3;
+		sprintf(sbuf_prioritaria.mtext, "Gerencia requiere sala para videoconferencia");
+		buf_length = strlen(sbuf_prioritaria.mtext) + 1;
+		
+		while (msgrcv(msqid_recibidos, &rbuf_recibidos, MSG_SIZE, 22, 0) < 0);
+		
+		if (msgsnd(msqid_prioritaria, &sbuf_prioritaria, buf_length, IPC_NOWAIT) < 0)
+		{
+			perror("msgsnd");
+			exit(1);
+		}
+		else
+		{
+			printf("Mensaje: \"%s\" enviado!\n", sbuf_prioritaria.mtext);
+		}
+	}
 	
-	if (msgsnd(msqid1, &sbuf1, buf_length, IPC_NOWAIT) < 0)
+	/**
+	 * Mensaje final prioritarios
+	 */
+	sbuf_prioritaria.mtype = 3;
+	sprintf(sbuf_prioritaria.mtext, "Fin prioritarios");
+	buf_length = strlen(sbuf_prioritaria.mtext) + 1;
+	
+	while (msgrcv(msqid_recibidos, &rbuf_recibidos, MSG_SIZE, 22, 0) < 0);
+	
+	if (msgsnd(msqid_prioritaria, &sbuf_prioritaria, buf_length, IPC_NOWAIT) < 0)
 	{
 		perror("msgsnd");
 		exit(1);
 	}
-	
-	if (msgsnd(msqid1, &sbuf1, buf_length, IPC_NOWAIT) < 0)
+	else
 	{
-		perror("msgsnd");
-		exit(1);
+		printf("Mensaje: \"%s\" enviado!\n", sbuf_prioritaria.mtext);
 	}
 	
-	while (msgrcv(msqid2, &rbuf2, MSG_SIZE, 200, 0) < 1);
 	
-	pid_recibidos = atoi(rbuf2.mtext);
-	
-	while (msgrcv(msqid3, &rbuf3, MSG_SIZE, 300, 0) < 1);
-	
-	pid_recibidos1 = atoi(rbuf3.mtext);
-	
-	printf("Mi PID = %d\nPID recibidos.c = %d\nPID recibidos1.c = %d\n\n", getpid(), pid_recibidos, pid_recibidos1);
-	
-	/**------------------------------------------------------------------------
-	 * Envío de mensajes
-	 * ------------------------------------------------------------------------
+	/**
+	 * Mensaje final no prioritarios
 	 */
 	
-	sbuf_ordinaria.mtype = 2;
-	sprintf(sbuf_ordinaria.mtext, "Requerimiento de mantenimiento de sala");
+	sbuf_ordinaria.mtype = 1;
+	sprintf(sbuf_ordinaria.mtext, "Fin no prioritarios");
 	buf_length = strlen(sbuf_ordinaria.mtext) + 1;
+	
+	while (msgrcv(msqid_recibidos1, &rbuf_recibidos1, MSG_SIZE, 11, 0) < 0);
 	
 	if (msgsnd(msqid_ordinaria, &sbuf_ordinaria, buf_length, IPC_NOWAIT) < 0)
 	{
@@ -123,31 +191,17 @@ int main()
 		printf("Mensaje: \"%s\" enviado!\n", sbuf_ordinaria.mtext);
 	}
 	
-	kill(pid_recibidos1, SIGUSR1);
-	pause();
+	/**
+	 * Esto es para evitar que se borren las colas
+	 * de mensajes antes de que sean utilizadas
+	 */
+	printf("\nPresione ENTER para continuar . . . ");
+	getchar();
 	
-	sbuf_ordinaria.mtype = 2;
-	sprintf(sbuf_ordinaria.mtext, "Requerimiento de mantenimiento de sala");
-	buf_length = strlen(sbuf_ordinaria.mtext) + 1;
-	
-	if (msgsnd(msqid_ordinaria, &sbuf_ordinaria, buf_length, IPC_NOWAIT) < 0)
-	{
-		perror("msgsnd");
-		exit(1);
-	}
-	else
-	{
-		printf("Mensaje: \"%s\" enviado!\n", sbuf_ordinaria.mtext);
-	}
-	
-	kill(pid_recibidos1, SIGUSR1);
-	pause();
-	
-	msgctl(msqid1, IPC_RMID, NULL);
-	msgctl(msqid2, IPC_RMID, NULL);
-	msgctl(msqid3, IPC_RMID, NULL);
 	msgctl(msqid_ordinaria, IPC_RMID, NULL);
 	msgctl(msqid_prioritaria, IPC_RMID, NULL);
+	msgctl(msqid_recibidos, IPC_RMID, NULL);
+	msgctl(msqid_recibidos1, IPC_RMID, NULL);
 	
 	return 0;
 }
