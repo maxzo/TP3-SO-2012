@@ -1,9 +1,8 @@
 #include <errno.h>
-//#include <linux/ipc.h>
 #include <linux/sem.h>
 #include <stdio.h>
 #include <stdlib.h>
-//#include <sys/shm.h>
+#include <string.h>
 #include <sys/types.h>
 #include "semaforo.c"
 
@@ -12,7 +11,9 @@
 #define LLENAS 2
 
 #define N 3
-#define SHM_SIZE 15
+#define SHM_SIZE 6
+
+void crear_shmem();
 
 int main(int argc, char* argv[], char* envp[])
 {
@@ -35,33 +36,8 @@ int main(int argc, char* argv[], char* envp[])
 	inicializar_sem(semid, VACIAS, N);
 	inicializar_sem(semid, LLENAS, 0);
 	
-	key_t shm_key;
-	int shmid;
-	char* shmem;
-	int i;
-	
-	if ((shm_key = ftok(".", 'x')) == -1)
-	{
-		perror("ftok");
-		exit(1);
-	}
-    
-    if ((shmid = shmget(shm_key, SHM_SIZE, IPC_CREAT | 0660)) == -1)
-	{
-        perror("shmget");
-        exit(1);
-    }
-    
-    if ((shmem = shmat(shmid, 0, 0)) == (void *) -1)
-	{
-        perror("shmat");
-        exit(1);
-    }
-    
-    for (i = 0; i < SHM_SIZE; i++)
-    {
-		shmem[i] = ' ';
-	}
+	crear_shmem();
+	//return 0;
 	
 	char* comando;
 		
@@ -71,27 +47,95 @@ int main(int argc, char* argv[], char* envp[])
 		execve(comando, argv, envp);
 		printf("Falla productor\n");
 	}
-	else if (fork() == 0)
+	else
 	{
 		comando = "./locutor";
 		execve(comando, argv, envp);
 		printf("Falla locutor\n");
+		
+		wait(NULL);
 	}
-	/*else
-	{
-		wait();
-		printf("Terminaron los hijos\n");
-		
-		union semun arg;
-		
-		if (semctl(semid, 0, IPC_RMID, arg) == -1)
-		{
-			perror("semctl");
-			exit(1);
-		}
-		
-		shmdt(shmem);
-	}*/
 	
 	return 0;
+}
+
+void crear_shmem()
+{
+	key_t shm_key1, shm_key2, shm_key3;
+	int shmid1, shmid2, shmid3;
+	char* shmem1, * shmem2, * shmem3;
+	
+	if ((shm_key1 = ftok(".", 'x')) == -1)
+	{
+		perror("ftok");
+		exit(1);
+	}
+	
+	if ((shm_key2 = ftok(".", 'y')) == -1)
+	{
+		perror("ftok");
+		exit(1);
+	}
+	
+	if ((shm_key3 = ftok(".", 'z')) == -1)
+	{
+		perror("ftok");
+		exit(1);
+	}
+	
+	if((shmid1 = shmget(shm_key1, SHM_SIZE, IPC_CREAT | IPC_EXCL | 0666)) == -1)
+	{
+		if((shmid1 = shmget(shm_key1, SHM_SIZE, 0)) == -1)
+		{
+		  perror("shmget");
+		  exit(1);
+		}
+	}
+    
+    if((shmid2 = shmget(shm_key2, SHM_SIZE, IPC_CREAT | IPC_EXCL | 0666)) == -1)
+	{
+		if((shmid2 = shmget(shm_key2, SHM_SIZE, 0)) == -1)
+		{
+		  perror("shmget");
+		  exit(1);
+		}
+	}
+    
+    if((shmid3 = shmget(shm_key3, SHM_SIZE, IPC_CREAT | IPC_EXCL | 0666)) == -1)
+	{
+		if((shmid3 = shmget(shm_key3, SHM_SIZE, 0)) == -1)
+		{
+		  perror("shmget");
+		  exit(1);
+		}
+	}
+    
+    if ((shmem1 = (char *) shmat(shmid1, 0, 0)) == (void *) -1)
+	{
+        perror("shmat");
+        exit(1);
+    }
+    
+    if ((shmem2 = (char *) shmat(shmid2, 0, 0)) == (void *) -1)
+	{
+        perror("shmat");
+        exit(1);
+    }
+    
+    if ((shmem3 = (char *) shmat(shmid3, 0, 0)) == (void *) -1)
+	{
+        perror("shmat");
+        exit(1);
+    }
+    
+    int i;
+    const char* vacio = "     ";
+    
+    strcpy(shmem1, vacio);
+    strcpy(shmem2, vacio);
+    strcpy(shmem3, vacio);
+    
+    /*shmctl(shmid1, IPC_RMID, 0);
+	shmctl(shmid2, IPC_RMID, 0);
+	shmctl(shmid3, IPC_RMID, 0);*/
 }
