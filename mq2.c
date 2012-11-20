@@ -14,7 +14,7 @@ char* shmem;
 
 int main()
 {
-	crear_o_enlazar;
+	crear_o_enlazar();
 	
 	return 0;
 }

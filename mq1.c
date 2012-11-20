@@ -7,7 +7,7 @@
 #include <linux/sem.h>
 #include "semaforo.c"
 
-#define SEGSIZE 2
+#define SEGSIZE 1
 
 void crear_o_enlazar();
 
@@ -50,8 +50,7 @@ void crear_o_enlazar()
 	
 	if (shmem_creada)
 	{
-		//shmem[0] = '3';
-		strcpy(shmem, "3");
+		shmem[0] = '3';
 		printf("He creado el segmento\n");
 	}
 	else
@@ -59,5 +58,5 @@ void crear_o_enlazar()
 		printf("He enlazado el segmento\n");
 	}
 	
-	printf("shmem = %s\n", shmem);
+	printf("shmem = %c\n", shmem[0]);
 }
